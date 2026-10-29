@@ -1,0 +1,3 @@
+# Nothing is required: every decoder uses only the standard library.
+# Optional extras:
+capstone>=5.0.1   # 16-bit disassembly in tools/dos-bin-inspect.py
