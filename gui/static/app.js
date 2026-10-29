@@ -222,7 +222,7 @@ async function planGroup() {
       method: "POST", body: JSON.stringify({ names: state.selected }),
     });
     if (!data.steps.length) return;
-    box.append(el("h2", "", "Multiple files selected"));
+    box.append(el("h2", "", "Case actions (" + state.selected.length + " files selected)"));
     const list = el("div", "steplist");
     data.steps.forEach((s) => {
       const card = el("div", "step primary");

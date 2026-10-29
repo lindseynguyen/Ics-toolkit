@@ -12,6 +12,7 @@ import argparse
 import os
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import carve, pcapio
 from icsctf.util import hexdump, printable, section, table, ts
 
@@ -25,9 +26,10 @@ def main() -> None:
     ap.add_argument("--carve", help="directory for carved files")
     ap.add_argument("--ascii", action="store_true", help="print strings not hexdump")
     ap.add_argument("--max", type=int, default=2048, help="bytes to print")
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, protos=["tcp"])
     streams = pcapio.assemble_tcp(pkts)
     ordered = sorted(streams.values(),
                      key=lambda s: (s.packets[0].ts if s.packets else 0))

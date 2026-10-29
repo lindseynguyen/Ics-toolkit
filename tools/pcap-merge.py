@@ -14,6 +14,7 @@ import argparse
 import struct
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import pcapio
 from icsctf.util import ts
 
@@ -25,9 +26,12 @@ def main() -> None:
     ap.add_argument("pcap", nargs="+")
     ap.add_argument("--keep-order", action="store_true",
                     help="do not sort by timestamp")
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap, sort_by_time=not args.keep_order)
+    pkts = _common.load_capture(args, args.pcap, keep_raw=True)
+    if not args.keep_order:
+        pkts.sort(key=lambda p: p.ts)
     if not pkts:
         print("nothing to merge")
         return

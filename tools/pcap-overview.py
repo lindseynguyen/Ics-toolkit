@@ -12,6 +12,7 @@ import argparse
 from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import pcapio
 from icsctf.util import pct, section, table, ts
 
@@ -49,9 +50,10 @@ def main() -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pcap", nargs="+")
     ap.add_argument("--top", type=int, default=20, help="rows per table")
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, keep_raw=False)
     if not pkts:
         print("no packets decoded")
         return

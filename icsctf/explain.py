@@ -68,6 +68,23 @@ GLOSSARY: Dict[str, str] = {
     "diagnostic buffer": "A ring buffer inside a Siemens PLC holding its own "
                          "event log, including why it last stopped. Small, so "
                          "it can be overwritten or cleared.",
+    "entropy": "How unpredictable the bytes of a file are, from 0 to 8. Plain "
+               "text sits near 4-5, ordinary code near 6, compressed or "
+               "encrypted data above 7.2.",
+    "offset": "A position in a file, counted in bytes from the start, usually "
+              "written in hexadecimal. The hex view jumps to one directly.",
+    "hash": "A fixed-length fingerprint of a file (md5, sha256). Two files with "
+            "the same hash are the same file; it is how you prove later which "
+            "file you analysed.",
+    "UTF-16": "A text encoding that stores two bytes per character. Plain "
+              "`strings` misses it, which is why text can look absent from a "
+              "Windows binary or a firmware image.",
+    "severity": "In the timeline: context, recon, suspicious, or impact. "
+                "Impact means something was changed - a value, an account, a "
+                "reporting channel - not that damage was proven.",
+    "allow-list": "The set of hosts permitted to do something. In OT it is the "
+                  "main control available, because the protocols themselves do "
+                  "not authenticate.",
     "IIN": "Internal Indications - status flags a DNP3 outstation reports, "
            "including whether it has just restarted.",
 }
@@ -397,6 +414,149 @@ def interpret(tool: str, args: List[str], out: str) -> List[str]:
         notes.append("Each stream is one conversation. Read the client-to-server "
                      "half for commands and the server-to-client half for "
                      "answers; carving extracts any file that was transferred.")
+        return notes
+
+    # ------------------------------------------------------------- timeline
+    if tool.startswith("timeline"):
+        n_impact = low.count("impact")
+        notes.append("Each row is one event with the file and the frame or line "
+                     "number it came from, so every statement in your report "
+                     "stays checkable.")
+        if "events that touched the process" in low:
+            notes.append("The second table is the short list that matters: "
+                         "commands that changed plant state, and accounts that "
+                         "were created or used. Read the rows immediately "
+                         "before the first one - that is usually where access "
+                         "was obtained.")
+        if n_impact:
+            notes.append("Severity is a guide, not a verdict: 'impact' means "
+                         "the event changed something (a value, an account, a "
+                         "reporting channel), not that damage was proven.")
+        if "quiet periods" in low:
+            notes.append("A long gap in a control network is itself a finding. "
+                         "Control traffic is periodic, so silence usually means "
+                         "the capture stopped, a device stopped answering, or "
+                         "reporting was suppressed.")
+        if "no year" in low or "syslog lines carry no year" in low:
+            notes.append("Syslog lines carry no year, so the file's "
+                         "modification year was assumed. If the log is from "
+                         "another year, pass --log-year, or the log events will "
+                         "sort away from the capture events.")
+        notes.append("Export it with --csv for a spreadsheet or --md for a "
+                     "report you can paste into a ticket.")
+        return notes
+
+    # -------------------------------------------------------------- rules
+    if tool.startswith("make-rules"):
+        notes.append("The host groups were inferred from this capture: devices "
+                     "are the hosts that answer requests, approved clients are "
+                     "the ones that issue them and did not behave like a tool. "
+                     "Check both against your asset inventory before deploying "
+                     "anything.")
+        if "excluded from the allow-lists" in low:
+            notes.append("The excluded hosts are the ones that scanned, or that "
+                         "issued the dangerous operations. They are kept out of "
+                         "the allow-lists on purpose - otherwise the rules "
+                         "would whitelist the attacker.")
+        notes.append("Rules are emitted for the whole protocol, not only for "
+                     "what happened here: a detection exists for what has not "
+                     "happened yet. Use --only-observed if you want the "
+                     "narrower set.")
+        notes.append("Test the rules against a known-good capture before "
+                     "deploying: 'suricata -r baseline.pcap -S ot-rules.rules' "
+                     "should be silent. In OT, start in alert mode - dropping a "
+                     "control packet can be as damaging as the attack.")
+        return notes
+
+    # ----------------------------------------------------- forensic helpers
+    if tool.startswith("file-inspect"):
+        notes.append("The hashes belong in your notes: they are how you prove "
+                     "later that you analysed this exact file.")
+        if "very high" in low:
+            notes.append("Very high entropy means the content is compressed or "
+                         "encrypted. If a container was found, extract it; if "
+                         "not, test a single-byte XOR before assuming real "
+                         "cryptography.")
+        if "very low" in low:
+            notes.append("Very low entropy means mostly padding or repeated "
+                         "bytes - typical of a firmware image with large empty "
+                         "regions. The interesting parts are the few dense "
+                         "areas.")
+        if "embedded containers" in low:
+            notes.append("Something is packed inside this file. Extract it and "
+                         "identify what comes out - nested containers are "
+                         "common.")
+        if "16 kib banks" in low:
+            notes.append("The size is a whole number of 16 KiB banks, which is "
+                         "what firmware and cartridge images look like. Treat "
+                         "offsets as bank-relative rather than absolute.")
+        return notes
+
+    if tool.startswith("strings-plus"):
+        notes.append("Each string carries its offset, so you can jump straight "
+                     "to it with the hex view instead of searching again.")
+        if "utf-16" in low or "wide-character" in low:
+            notes.append("Some strings are UTF-16 (two bytes per character). "
+                         "Plain `strings` misses those entirely, which is why "
+                         "text seems to be 'missing' from Windows binaries and "
+                         "firmware.")
+        if "ot vocabulary" in low:
+            notes.append("The OT vocabulary group is the fastest way to tell "
+                         "what process a binary belongs to: units, equipment "
+                         "names and alarm wording come from the plant it was "
+                         "written for.")
+        if "credential-like" in low:
+            notes.append("Credential-like strings are a pattern match, not a "
+                         "finding. Confirm each one in context before calling "
+                         "it a password.")
+        return notes
+
+    if tool.startswith("hexview"):
+        if "does not appear" in low:
+            notes.append("Not finding text is normal: it may be stored as "
+                         "UTF-16, compressed, or built at run time rather than "
+                         "stored. The tool suggests the UTF-16 search when that "
+                         "is the case.")
+        else:
+            notes.append("The left column is the file offset. Matched bytes are "
+                         "shown in [brackets], and the right column is the same "
+                         "bytes as text, with unprintable values shown as dots.")
+        return notes
+
+    if tool.startswith("bin-diff"):
+        if "identical" in low:
+            notes.append("The two files are the same. If you expected a "
+                         "difference, you may be comparing a copy with itself.")
+            return notes
+        notes.append("Read the interpretation column first: a text change is a "
+                     "relabelled message, a four-byte change in a data area is "
+                     "usually a constant - a setpoint, a limit or a timer.")
+        if "checksum" in low or "0x0000014" in low:
+            notes.append("A change in the header area alone usually just means "
+                         "the image was rebuilt, not that behaviour changed.")
+        notes.append("Add --hexdump to see the bytes of each region if you need "
+                     "to quote them in a report.")
+        return notes
+
+    if tool.startswith("decode"):
+        if "nothing decoded" in low:
+            notes.append("No encoding produced something more readable. That "
+                         "usually means it is already plain data, it is packed "
+                         "with something unusual, or it is genuinely encrypted - "
+                         "in which case the key has to come from elsewhere.")
+        else:
+            notes.append("Candidates are ranked by how much the result looks "
+                         "like real text. The top one is usually right, but "
+                         "read it before trusting it - a high score on random "
+                         "bytes is possible.")
+            notes.append("XOR with a single byte is obfuscation, not "
+                         "encryption. If that is what worked, the 'key' is just "
+                         "a byte value and the data was never protected.")
+        return notes
+
+    if tool.startswith("triage-plan"):
+        notes.append("This is the plan, not the analysis: each line is a command "
+                     "you can run, in the order a responder would run them.")
         return notes
 
     if tool.startswith("pcap-merge"):

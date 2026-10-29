@@ -48,6 +48,28 @@ run "$T/dos-bin-inspect.py"   "$FX/SETPT16.COM" --ints
 run "$T/blob-carve.py"        "$FX/rig.gb" --entropy
 run "$T/blob-carve.py"        "$FX/rig.gb" --xor
 
+run "$T/timeline.py"          "$FX/bacnet_bms.pcap" "$FX/jumpbox_auth.log" "$FX/jumpbox_bash_history" --log-year 2023
+run "$T/timeline.py"          "$FX/modbus_plc.pcap" --min-severity impact --gaps 60
+run "$T/make-rules.py"        "$FX/bacnet_bms.pcap" "$FX/modbus_plc.pcap" "$FX/s7comm_wtp.pcap"
+run "$T/make-rules.py"        "$FX/iec104_rtu.pcap" --format suricata
+run "$T/file-inspect.py"      "$FX/rig.gb"
+run "$T/file-inspect.py"      "$FX"/* --summary
+run "$T/strings-plus.py"      "$FX/SETPT16.COM"
+run "$T/strings-plus.py"      "$FX/rig.gb" --only "ot vocabulary"
+run "$T/hexview.py"           "$FX/rig.gb" --at 0x4000 --length 128
+run "$T/hexview.py"           "$FX/SETPT16.COM" --find "SETPOINT"
+run "$T/bin-diff.py"          "$FX/rig.gb" "$FX/rig_v2.gb"
+run "$T/bin-diff.py"          "$FX/rig.gb" "$FX/rig_v2.gb" --hexdump
+run "$T/decode.py"            --text "UFVNUCBQLTEwMSBUUklQ"
+run "$T/bacnet-triage.py"     "$FX/bacnet_bms.pcap" --max-packets 20 --quiet-size
+run "$T/modbus-triage.py"     "$FX/modbus_plc.pcap" --all-ports --quiet-size
+
+echo "--- detection rule offsets"
+if ! python3 "$ROOT/tests/check_rule_offsets.py" "$FX" > /dev/null; then
+  echo "FAILED: rule offsets do not match real traffic"
+  fail=$((fail + 1))
+fi
+
 echo "--- gui API smoke test"
 if ! python3 "$ROOT/tests/gui_smoke.py" "$FX" > /dev/null; then
   echo "FAILED: gui smoke test"

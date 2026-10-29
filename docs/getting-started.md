@@ -298,7 +298,72 @@ answers them faster.
 
 ---
 
-## 8. Several files at once
+## 8. Putting the case together
+
+Up to here you have run one tool against one file. Two commands work on the
+whole case at once, and they are where the method pays off.
+
+### One timeline
+
+```bash
+python3 tools/timeline.py fixtures/bacnet_bms.pcap fixtures/modbus_plc.pcap \
+    fixtures/jumpbox_auth.log fixtures/jumpbox_bash_history \
+    --log-year 2023 --min-severity suspicious
+```
+
+Captures and logs become the same kind of record, merged in UTC order: an SSH
+login accepted after a run of failures, an account created and added to
+`sudo`, a tool downloaded, a scan run, then the BACnet password attempts, then
+the writes, then the history file being cleared.
+
+Read it the way a responder does: **find the first `impact` row, then read
+upwards.** Access was obtained somewhere above it. Anything that silenced
+reporting sits between the two.
+
+Every row carries the frame or line number it came from, so each sentence in
+your report stays checkable. `--csv` and `--md` export it.
+
+A warning worth internalising: syslog lines carry no year, so the year is
+guessed from the file. That is why `--log-year` exists, and why log events can
+otherwise sort a year away from capture events.
+
+### Detections, not just findings
+
+```bash
+python3 tools/make-rules.py fixtures/bacnet_bms.pcap fixtures/modbus_plc.pcap \
+    --out rules/
+```
+
+This works out which hosts legitimately speak each protocol - devices answer
+requests, clients issue them - excludes the hosts that scanned or issued the
+dangerous operations, and writes Suricata rules, a Zeek policy and Sigma rules
+with those groups filled in.
+
+Open `rules/README.md`. It tells you what to check before deploying, and that
+list is the honest part: the groups came from one capture, the thresholds are
+a guess, and in OT you start in alert mode because dropping a control packet
+can be as damaging as the attack.
+
+This is the step that turns an exercise into something your employer can use.
+
+### When you do not know what a file is
+
+```bash
+python3 tools/file-inspect.py fixtures/*  --summary
+python3 tools/file-inspect.py fixtures/rig.gb
+python3 tools/strings-plus.py fixtures/SETPT16.COM
+python3 tools/hexview.py fixtures/SETPT16.COM --find "SETPOINT"
+python3 tools/bin-diff.py fixtures/rig.gb fixtures/rig_v2.gb
+python3 tools/decode.py --text "UFVNUCBQLTEwMSBUUklQUEVEIC0gTEVWRUwgTE9X"
+```
+
+These are the everyday commands with OT knowledge built in. The one to try
+first is `bin-diff.py` on the two ROM builds: it reports three changes and
+tells you that one of them is a float that went from 1.5 to 9.75. That is a
+complete firmware review in three lines, and it is the shape of a real finding -
+someone moved a setpoint and rebuilt the image.
+
+## 9. Several files at once
 
 If you are given a capture split into fragments:
 
@@ -315,9 +380,15 @@ split captures mislead you.
 everything you were given and it prints what each file is and which command to
 run next.
 
+If a capture is large - and a real one will be - read
+[`large-captures.md`](large-captures.md) before you start. The short version:
+every capture tool takes `--max-packets`, `--since` and `--until`, and cutting
+the window out once with `pcap-merge.py` beats re-filtering a big file for
+every question.
+
 ---
 
-## 9. The habit to build
+## 10. The habit to build
 
 Four questions, in this order, for any OT artefact:
 

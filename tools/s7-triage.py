@@ -18,6 +18,7 @@ import argparse
 from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import pcapio, s7comm
 from icsctf.util import section, table, ts
 
@@ -35,9 +36,10 @@ def main() -> None:
     ap.add_argument("--control", action="store_true", help="PLC control / stop only")
     ap.add_argument("--timeline", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, ports=[args.port])
     msgs = s7comm.extract(pkts, args.port)
     if args.src:
         msgs = [m for m in msgs if m.src == args.src]

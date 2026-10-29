@@ -17,6 +17,7 @@ import argparse
 from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import bacnet, pcapio
 from icsctf.util import section, table, ts
 
@@ -35,9 +36,10 @@ def main() -> None:
     ap.add_argument("--writes", action="store_true", help="writeProperty activity only")
     ap.add_argument("--devices", action="store_true", help="device inventory only")
     ap.add_argument("--limit", type=int, default=0, help="cap timeline rows")
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, ports=[args.port])
     msgs = bacnet.extract(pkts, args.port)
     if args.src:
         msgs = [m for m in msgs if m.src == args.src]

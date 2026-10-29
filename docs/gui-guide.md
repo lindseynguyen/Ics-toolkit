@@ -66,8 +66,19 @@ The default, and the one to use when you are learning.
    (with a *Copy command* button), a **What this means** block translating the
    tables into plain language, and the full report.
 
-Select several files with Ctrl/Cmd-click and the panel offers cross-file
-actions, such as merging a fragmented capture set into one timeline.
+Select several files with Ctrl/Cmd-click and **Case actions** appear above the
+identification card:
+
+- **Build one incident timeline** from every selected capture and log, merged
+  in UTC order;
+- **Generate detection rules** (Suricata, Zeek, Sigma) from the selected
+  captures;
+- **Merge captures** into one file when a capture set arrives fragmented;
+- **Compare two binaries** when exactly two are selected;
+- **Identify and hash all of them**, as a case-folder inventory.
+
+Every artefact also gets the general-purpose helpers at the end of its step
+list: classified strings, a hex view with search, and the decoder.
 
 ### All tools
 

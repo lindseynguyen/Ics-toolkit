@@ -48,7 +48,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Hosts, conversations, which industrial protocol is present, "
                  "scan heuristics. The first thing to run on any capture.",
         "accepts": ["pcap"],
-        "flags": {"--top": "int"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--top": "int"},
         "views": [],
     },
     "bacnet-triage.py": {
@@ -56,7 +56,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Building-management traffic: device inventory, password "
                  "attempts, property writes.",
         "accepts": ["pcap"],
-        "flags": {"--port": "int", "--src": "str", "--dst": "str",
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--port": "int", "--src": "str", "--dst": "str",
                   "--service": "str", "--limit": "int"},
         "views": [
             ("", "Full report"),
@@ -71,7 +71,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "PLC traffic: fingerprinting, logic transfers, CPU state "
                  "changes, tag writes.",
         "accepts": ["pcap"],
-        "flags": {"--port": "int", "--src": "str", "--dst": "str", "--limit": "int"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--port": "int", "--src": "str", "--dst": "str", "--limit": "int"},
         "views": [
             ("", "Full report"),
             ("--szl", "SZL diagnostic reads (fingerprinting)"),
@@ -86,7 +86,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Register and coil activity, writes, exception trails, "
                  "float decoding.",
         "accepts": ["pcap"],
-        "flags": {"--port": "int", "--unit": "int", "--src": "str", "--limit": "int"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--port": "int", "--unit": "int", "--src": "str", "--limit": "int"},
         "views": [
             ("", "Full report"),
             ("--map", "Register and coil map"),
@@ -101,7 +101,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Telecontrol traffic: session state, command timeline, "
                  "select-before-operate audit.",
         "accepts": ["pcap"],
-        "flags": {"--port": "int", "--limit": "int"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--port": "int", "--limit": "int"},
         "views": [
             ("", "Full report"),
             ("--commands", "Control commands and their confirmations"),
@@ -115,7 +115,7 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Outstation traffic: function codes, status flags, control "
                  "operations.",
         "accepts": ["pcap"],
-        "flags": {"--port": "int", "--limit": "int"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--port": "int", "--limit": "int"},
         "views": [("", "Full report"),
                   ("--controls", "Control operations only"),
                   ("--timeline", "Every frame in order")],
@@ -125,14 +125,14 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
         "blurb": "Credentials and secrets the protocols send in the clear, "
                  "including MS SQL Server login fields.",
         "accepts": ["pcap"],
-        "flags": {"--proto": "str"},
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--proto": "str"},
         "views": [("", "All findings")],
     },
     "stream-carve.py": {
         "title": "TCP streams",
         "blurb": "Conversations you can read end to end, and file carving.",
         "accepts": ["pcap"],
-        "flags": {"--stream": "int", "--max": "int", "--out": "path",
+        "flags": {"--max-packets": "int", "--since": "str", "--until": "str", "--stream": "int", "--max": "int", "--out": "path",
                   "--carve": "path"},
         "views": [("", "Stream index"), ("--ascii", "Readable text of a stream")],
     },
@@ -180,6 +180,78 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
                   ("--entropy", "Entropy profile"),
                   ("--xor", "Single-byte XOR sweep")],
     },
+    "timeline.py": {
+        "title": "Incident timeline (all artefacts)",
+        "blurb": "Merges captures and logs into one UTC timeline: who did what, "
+                 "to which device, in what order.",
+        "accepts": ["pcap", "text", "archive"],
+        "flags": {"--min-severity": "str", "--log-year": "int", "--gaps": "int",
+                  "--csv": "path", "--md": "path", "--json": "path",
+                  "--max-packets": "int", "--since": "str", "--until": "str"},
+        "views": [("", "Everything"),
+                  ("--detail", "With the raw line behind each event"),
+                  ("--keep-unmatched", "Keep log lines that match no rule")],
+        "multi": True,
+    },
+    "make-rules.py": {
+        "title": "Generate detection rules",
+        "blurb": "Turns what a capture shows into Suricata, Zeek and Sigma rules, "
+                 "with the host allow-lists filled in.",
+        "accepts": ["pcap"],
+        "flags": {"--out": "path", "--format": "str", "--max-packets": "int",
+                  "--since": "str", "--until": "str"},
+        "views": [("", "Summary and preview"),
+                  ("--only-observed", "Only rules for what was seen here")],
+        "multi": True,
+    },
+    "file-inspect.py": {
+        "title": "What is this file?",
+        "blurb": "Type, hashes, entropy, embedded containers and the strings "
+                 "worth a look - the first command for anything unfamiliar.",
+        "accepts": ["pcap", "gbrom", "dosbin", "archive", "text"],
+        "flags": {"--min-len": "int"},
+        "views": [("", "Full report"),
+                  ("--summary", "One row per file"),
+                  ("--strings", "Also list every string")],
+        "multi": True,
+    },
+    "strings-plus.py": {
+        "title": "Strings, classified",
+        "blurb": "Text inside a binary with offsets and UTF-16 support, grouped "
+                 "into addresses, paths, commands, OT vocabulary.",
+        "accepts": ["gbrom", "dosbin", "archive", "pcap"],
+        "flags": {"--min-len": "int", "--grep": "str", "--only": "str",
+                  "--at": "str", "--length": "str", "--limit": "int"},
+        "views": [("", "All strings"), ("--ascii-only", "ASCII only (faster)")],
+    },
+    "hexview.py": {
+        "title": "Hex view and byte search",
+        "blurb": "Look at the bytes at any offset, or find where a value lives.",
+        "accepts": ["gbrom", "dosbin", "archive", "pcap", "text"],
+        "flags": {"--at": "str", "--length": "str", "--find": "str",
+                  "--find-hex": "str", "--context": "str", "--width": "int"},
+        "views": [("", "Hex dump")],
+    },
+    "bin-diff.py": {
+        "title": "Compare two files",
+        "blurb": "What changed between two builds: a relabelled message, a "
+                 "changed setpoint, a rebuilt checksum.",
+        "accepts": ["gbrom", "dosbin", "archive", "text"],
+        "flags": {"--context": "int", "--merge-gap": "int", "--limit": "int"},
+        "views": [("", "Changed regions"), ("--hexdump", "With the bytes")],
+        "multi": True,
+        "needs_two": True,
+    },
+    "decode.py": {
+        "title": "Decode an encoded blob",
+        "blurb": "Tries base64, hex, gzip, zlib, URL, ROT13, UTF-16 and XOR, and "
+                 "shows what comes out.",
+        "accepts": ["archive", "text", "gbrom", "dosbin"],
+        "flags": {"--text": "str", "--at": "str", "--length": "str",
+                  "--out": "path"},
+        "views": [("", "Best candidates"), ("--chain", "Follow nested encodings"),
+                  ("--no-xor", "Skip the XOR sweep")],
+    },
     "triage-plan.py": {
         "title": "Suggested plan",
         "blurb": "Identify an artefact and print the recommended order of "
@@ -190,7 +262,9 @@ TOOL_CATALOG: Dict[str, Dict[str, Any]] = {
     },
 }
 
-BOOL_FLAGS = {"--dcc", "--writes", "--devices", "--timeline", "--szl",
+BOOL_FLAGS = {"--all-ports", "--quiet-size", "--detail", "--keep-unmatched",
+              "--only-observed", "--summary", "--ascii-only", "--chain",
+              "--no-xor", "--hexdump", "--dcc", "--writes", "--devices", "--timeline", "--szl",
               "--blocks", "--control", "--map", "--floats", "--strings",
               "--commands", "--sbo", "--ioa", "--controls", "--ascii",
               "--blobs", "--vectors", "--screens", "--ints", "--entropy",
@@ -241,9 +315,16 @@ def build_args(tool: str, files: List[str], flags: Dict[str, Any]) -> List[str]:
         if not os.path.isfile(p):
             raise ValueError(f"no such file: {os.path.basename(p)}")
     if not paths:
+        if tool == "decode.py" and flags.get("--text"):
+            argv.append("--text")
+            argv.append(str(flags.pop("--text")))
+            return argv
         raise ValueError("no input file selected")
-    if not spec.get("multi") and len(paths) > 1 and tool != "pcap-overview.py" \
-            and tool != "triage-plan.py":
+    if spec.get("needs_two") and len(paths) != 2:
+        raise ValueError("select exactly two files to compare "
+                         "(Ctrl/Cmd-click in the file list)")
+    if not spec.get("multi") and len(paths) > 1 and tool not in (
+            "pcap-overview.py", "triage-plan.py"):
         paths = paths[:1]
 
     if spec.get("output_first"):

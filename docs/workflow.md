@@ -81,6 +81,26 @@ python3 tools/dos-bin-inspect.py  LEGACY.COM
 
 Container, then regions, then data, then code - in that order.
 
+## 7b. Merge everything into one timeline
+
+```bash
+python3 tools/timeline.py evidence/* --min-severity suspicious --md report.md
+```
+
+Captures, auth logs, shell history and CSV exports become one UTC sequence.
+This is the step that turns separate reports into an account of what happened;
+[`timeline.md`](timeline.md) covers how to read one and the clock traps.
+
+## 7c. Turn the findings into detections
+
+```bash
+python3 tools/make-rules.py evidence/*.pcap --out rules/
+```
+
+Suricata, Zeek and Sigma rules with the host allow-lists inferred from the
+capture and the misbehaving hosts excluded from them. Read the generated
+README before deploying - see [`detection-rules.md`](detection-rules.md).
+
 ## 8. Write it down as an incident, not as a flag
 
 For each finding record: frame number, timestamp (UTC), source, target,

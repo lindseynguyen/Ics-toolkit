@@ -59,6 +59,12 @@ instead of hiding it.
 
 ![A result](docs/images/gui-result.png)
 
+Select several artefacts and **Case actions** appear: build one incident
+timeline from the whole set, generate detection rules, merge a fragmented
+capture set, or compare two binaries.
+
+![Case actions](docs/images/gui-case-actions.png)
+
 Three tabs: **Guided** (identification and the ordered plan), **All tools**
 (every script with every option), **How to use** (method and glossary).
 Full detail in [`docs/gui-guide.md`](docs/gui-guide.md); a forty-minute
@@ -73,8 +79,12 @@ python3 tools/triage-plan.py evidence/*
 
 ## Tools
 
+**Case-level**
+
 | Tool | Purpose |
 |---|---|
+| `tools/timeline.py` | one UTC timeline from every artefact in a case - captures, auth logs, shell history, CSV exports - each row carrying the frame or line number it came from |
+| `tools/make-rules.py` | turn what a capture shows into deployable Suricata, Zeek and Sigma rules, with the host allow-lists inferred and the attacker excluded from them |
 | `tools/triage-plan.py` | identify any set of artefacts and print the recommended order of analysis, with the commands ready to paste |
 | `tools/pcap-overview.py` | first pass on any capture: hosts, conversations, protocol identification, scan heuristics, fragmentation warning |
 | `tools/bacnet-triage.py` | BACnet/IP: device inventory, service usage, DeviceCommunicationControl / ReinitializeDevice password attempts with accepted-vs-failed counts, writeProperty targets and priorities |
@@ -88,6 +98,16 @@ python3 tools/triage-plan.py evidence/*
 | `tools/gb-cart-inspect.py` | Game Boy cartridge images: header, mapper, checksum tampering, per-bank entropy and string profile, embedded archive detection |
 | `tools/dos-bin-inspect.py` | 16-bit `.COM` / MZ `.EXE`: container layout, operator strings, DOS/BIOS interrupt usage (INT 14h = serial field protocol), setpoint-like IEEE-754 constants, optional disassembly |
 | `tools/blob-carve.py` | any binary: magic scan, decompression, entropy profile, single-byte-XOR container recovery, extraction |
+
+**General-purpose forensic and reverse-engineering helpers** - `file`, `strings`, `xxd`, `diff` and `base64 -d`, with OT knowledge built in and output that says what it means ([details](docs/forensic-tools.md))
+
+| Tool | Purpose |
+|---|---|
+| `tools/file-inspect.py` | what is this file: type by content, hashes, entropy with a plain reading of it, embedded containers, classified strings, suggested next commands |
+| `tools/strings-plus.py` | strings with offsets and UTF-16 support, grouped into addresses, paths, commands, credential-like text, OT vocabulary and Siemens block names |
+| `tools/hexview.py` | hex view at any offset, and a byte search that shows every hit in context (and tells you when the text exists as UTF-16 instead) |
+| `tools/bin-diff.py` | compare two builds and interpret each change: a relabelled message, a setpoint moved from 1.5 to 9.75, a rebuilt checksum |
+| `tools/decode.py` | decode base64/base32/hex/URL/gzip/zlib/ROT13/UTF-16/single-byte-XOR without guessing which one, following nested encodings |
 
 Every tool is `--help`-documented and prints plain tables, so output pipes into
 `grep`, `diff` and a report.
@@ -123,6 +143,9 @@ for key, res in results.items():
 | `icsctf.dosbin` | MZ/COM layout, interrupt scan, float constants |
 | `icsctf.detect` | content-based artefact identification and step planning |
 | `icsctf.explain` | plain-language interpretation of a report, and the glossary |
+| `icsctf.timeline` | event extraction from captures and logs, merging, CSV/JSON/Markdown export |
+| `icsctf.rules` | capture profiling and Suricata / Zeek / Sigma generation |
+| `icsctf.forensics` | identification, hashing, strings, hex, byte diffing, decoders |
 
 ## Documentation
 
@@ -148,17 +171,45 @@ for key, res in results.items():
   and bank layout, embedded archives, 16-bit HMI binaries
 - [`attack-mapping.md`](docs/attack-mapping.md) - MITRE ATT&CK for ICS
   technique mapping, and what generalises
+- [`timeline.md`](docs/timeline.md) - building one timeline from a whole case,
+  how to read it, and the clock problems you will hit
+- [`detection-rules.md`](docs/detection-rules.md) - how the allow-lists are
+  inferred, what is covered, and what to check before deploying
+- [`forensic-tools.md`](docs/forensic-tools.md) - the general-purpose helpers
+  and how they fit the workflow
+- [`large-captures.md`](docs/large-captures.md) - the size controls, and a
+  workable order on a multi-gigabyte file
 - [`workflow.md`](docs/workflow.md) - the triage order of operations, plus
   Wireshark display filters for the same questions
 - [`defense-notes.md`](docs/defense-notes.md) - turning each observation into
   a control an operator can implement
+
+## Scale
+
+Every capture tool reads a file as a stream and keeps only the packets it will
+decode, so a protocol report on a multi-gigabyte capture costs the memory of
+the traffic it reports on, not of the file. All of them accept the same
+controls:
+
+```bash
+python3 tools/pcap-overview.py huge.pcap --max-packets 200000
+python3 tools/bacnet-triage.py huge.pcap --since 10:40 --until 11:10
+python3 tools/modbus-triage.py odd-port.pcap --all-ports
+```
+
+See [`docs/large-captures.md`](docs/large-captures.md).
 
 ## Verifying the decoders
 
 ```bash
 python3 tests/make_fixtures.py fixtures/
 bash tests/run_all.sh fixtures/
+python3 tests/check_rule_offsets.py fixtures/
 ```
+
+`check_rule_offsets.py` matters: it asserts that the byte offsets the generated
+Suricata rules rely on actually match real traffic, because a rule that never
+fires is worse than no rule.
 
 `make_fixtures.py` builds synthetic BACnet, S7comm, Modbus, IEC-104, DNP3 and
 TDS captures plus a Game Boy ROM with an embedded zlib archive and a `.COM`

@@ -15,6 +15,10 @@ from typing import Dict, List, Optional, Tuple
 
 from . import pcapio
 
+# ports this module knows how to mine; used to pre-filter very large captures
+CLEARTEXT_HINT_PORTS = (21, 23, 25, 80, 110, 143, 161, 162, 389, 587,
+                        1433, 2121, 3306, 8000, 8080, 8081)
+
 
 @dataclass
 class Finding:

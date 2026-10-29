@@ -340,19 +340,51 @@ def _analyse_text(path: str) -> Artefact:
     return art
 
 
+IDENTIFY_STEP = Step(
+    "Identify, hash and first findings", "file-inspect.py",
+    why="Type, size, hashes for your notes, entropy, anything embedded inside "
+        "it and the strings worth reading. Run this on anything you have not "
+        "seen before - it costs seconds and often answers the question.")
+
+BINARY_HELPERS = [
+    Step("Strings, grouped by what they are", "strings-plus.py",
+         why="Text inside a binary, with the offset of each one and UTF-16 "
+             "support. Grouped into addresses, file paths, commands, OT "
+             "vocabulary and flag-like markers so you can see what the file "
+             "is about without reading all of it."),
+    Step("Look at the bytes", "hexview.py",
+         why="A hex view of any offset, and a search that tells you where a "
+             "value actually lives in the file. Use it after a report gives "
+             "you an offset."),
+    Step("Decode an encoded blob", "decode.py",
+         why="If part of the file looks like base64, hex or a compressed "
+             "stream, this tries every common encoding and shows what comes "
+             "out - no need to guess which one it is."),
+]
+
+
+def _augment(art: "Artefact") -> "Artefact":
+    """Every artefact gets the same opening move, and binaries get the
+    general-purpose reverse-engineering helpers at the end."""
+    art.steps.insert(0, IDENTIFY_STEP)
+    if art.kind in ("gbrom", "dosbin", "archive"):
+        art.steps += BINARY_HELPERS
+    return art
+
+
 def identify(path: str) -> Artefact:
     """Content-based identification plus a suggested order of analysis."""
     if not os.path.isfile(path):
         raise FileNotFoundError(path)
     head = _sniff(path)
     if _is_pcap(head):
-        return _analyse_pcap(path)
+        return _augment(_analyse_pcap(path))
     if _is_gb(path, head):
-        return _analyse_gb(path)
+        return _augment(_analyse_gb(path))
     if _is_dosbin(path, head):
-        return _analyse_dosbin(path)
+        return _augment(_analyse_dosbin(path))
     if _is_text(head):
-        return _analyse_text(path)
+        return _augment(_analyse_text(path))
     art = Artefact(path=path, size=os.path.getsize(path), kind="archive",
                    summary="Binary file of an unrecognised type")
     art.details.append("Treated as a generic blob: container scan, "
@@ -368,19 +400,59 @@ def identify(path: str) -> Artefact:
         Step("Printable strings", "blob-carve.py", ["--strings", "6"],
              why="Often the fastest way to recognise what a file belongs to."),
     ]
-    return art
+    return _augment(art)
 
 
 def plan_group(paths: List[str]) -> List[Step]:
-    """Cross-file suggestions, e.g. stitching a fragmented capture set."""
+    """Cross-file suggestions: the work that only makes sense on a whole case."""
     steps: List[Step] = []
     caps = [p for p in paths if _is_pcap(_sniff(p))]
+    texts = [p for p in paths if not _is_pcap(_sniff(p)) and _is_text(_sniff(p))]
+    binaries = [p for p in paths
+                if not _is_pcap(_sniff(p)) and not _is_text(_sniff(p))]
+
+    if caps or texts:
+        what = []
+        if caps:
+            what.append(f"{len(caps)} capture(s)")
+        if texts:
+            what.append(f"{len(texts)} log(s)")
+        steps.append(Step(
+            label="Build one incident timeline from these files",
+            tool="timeline.py",
+            why=f"Merges {' and '.join(what)} into a single UTC timeline - who "
+                "did what, to which device, in what order, each row carrying "
+                "the frame or line number it came from. This is the view an "
+                "incident report needs and the one a single capture cannot "
+                "give you.",
+            primary=True))
+    if caps:
+        steps.append(Step(
+            label="Generate detection rules from these captures",
+            tool="make-rules.py",
+            why="Works out which hosts legitimately speak each protocol, then "
+                "writes Suricata, Zeek and Sigma rules for the operations that "
+                "matter. Turns 'I found it' into 'tell me if it happens again'."))
     if len(caps) > 1:
         steps.append(Step(
-            label=f"Merge {len(caps)} captures into one timeline",
+            label=f"Merge {len(caps)} captures into one file",
             tool="pcap-merge.py",
-            why="Challenge artefacts often arrive split into fragments. "
-                "Merging them in timestamp order lets every decoder see one "
-                "coherent session instead of pieces.",
-            primary=True))
+            why="Captures often arrive split into fragments. Merging them in "
+                "timestamp order lets every decoder see one coherent session "
+                "instead of pieces."))
+    if len(binaries) == 2:
+        steps.append(Step(
+            label="Compare the two binaries",
+            tool="bin-diff.py",
+            why="Byte-level comparison that says what changed: a relabelled "
+                "message, a changed setpoint constant, or just a rebuilt "
+                "checksum. The fastest way to review two firmware builds."))
+    if len(paths) > 1:
+        steps.append(Step(
+            label="Identify and hash all of them",
+            tool="file-inspect.py",
+            args=["--summary"],
+            why="One row per file: type, size, entropy and hash. Good first "
+                "inventory of a case folder, and the hashes belong in your "
+                "notes."))
     return steps

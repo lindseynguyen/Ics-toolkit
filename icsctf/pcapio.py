@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 ETH_P_IP = 0x0800
 ETH_P_IPV6 = 0x86DD
@@ -247,23 +247,113 @@ def decode(index: int, ts: float, linktype: int, frame: bytes) -> Packet:
     return pkt
 
 
-def read_packets(path: str) -> List[Packet]:
-    out: List[Packet] = []
-    for i, (ts, lt, frame) in enumerate(iter_frames(path), start=1):
-        out.append(decode(i, ts, lt, frame))
-    return out
+def read_packets(path: str, **filters) -> List[Packet]:
+    """All packets of one capture. See iter_packets() for the filters."""
+    return list(iter_packets([path], **filters))
 
 
-def read_many(paths: List[str], sort_by_time: bool = True) -> List[Packet]:
-    """Read several captures as one timeline (for fragmented challenge sets)."""
-    pkts: List[Packet] = []
-    for p in paths:
-        pkts.extend(read_packets(p))
+# ---------------------------------------------------------------------------
+# streaming reader
+#
+# A plant capture is routinely hundreds of megabytes. Materialising every
+# packet is what makes a tool die on its first real case, so the reader is a
+# generator and the filters are applied while parsing: only the packets a tool
+# will actually look at are ever built, and `keep_raw=False` drops the frame
+# bytes once they have been decoded.
+# ---------------------------------------------------------------------------
+def iter_packets(paths: Iterable[str],
+                 ports: Optional[Iterable[int]] = None,
+                 protos: Optional[Iterable[str]] = None,
+                 since: Optional[float] = None,
+                 until: Optional[float] = None,
+                 limit: Optional[int] = None,
+                 keep_raw: bool = True,
+                 with_payload_only: bool = False) -> Iterator[Packet]:
+    """Decode captures one packet at a time.
+
+    ports               keep only packets whose source or destination port matches
+    protos              keep only these L4 protocols ("tcp", "udp", ...)
+    since / until       epoch seconds, inclusive window
+    limit               stop after this many *kept* packets
+    keep_raw            False discards the frame bytes (saves ~1 KB per packet)
+    with_payload_only   drop packets with no L4 payload (handshakes, bare ACKs)
+
+    Frame numbers stay those of the file, so a reported frame still matches
+    what Wireshark shows.
+    """
+    want_ports = set(ports) if ports else None
+    want_protos = set(protos) if protos else None
+    kept = 0
+    for path in paths:
+        index = 0
+        for ts, lt, frame in iter_frames(path):
+            index += 1
+            if since is not None and ts < since:
+                continue
+            if until is not None and ts > until:
+                continue
+            pkt = decode(index, ts, lt, frame)
+            if want_protos and pkt.proto not in want_protos:
+                continue
+            if want_ports and not (pkt.sport in want_ports or pkt.dport in want_ports):
+                continue
+            if with_payload_only and not pkt.payload:
+                continue
+            if not keep_raw:
+                pkt.raw = b""
+            yield pkt
+            kept += 1
+            if limit is not None and kept >= limit:
+                return
+
+
+def read_many(paths: List[str], sort_by_time: bool = True, **filters) -> List[Packet]:
+    """Read several captures as one timeline (for fragmented challenge sets).
+
+    Accepts the same filters as iter_packets(); passing `ports=` or `limit=`
+    here is what keeps a multi-gigabyte capture inside memory.
+    """
+    pkts: List[Packet] = list(iter_packets(paths, **filters))
     if sort_by_time:
         pkts.sort(key=lambda p: (p.ts, p.index))
-    for i, p in enumerate(pkts, start=1):
-        p.index = i
+    if len(paths) > 1:
+        for i, p in enumerate(pkts, start=1):   # renumber a merged timeline
+            p.index = i
     return pkts
+
+
+def capture_profile(path: str, sample: Optional[int] = None) -> Dict[str, Any]:
+    """Stream a capture and report its shape without keeping any packet.
+
+    Safe on a file of any size: this is what the tools use to decide whether a
+    capture needs filtering before it is loaded.
+    """
+    first = last = None
+    total = 0
+    bytes_seen = 0
+    ports: Dict[int, int] = {}
+    protos: Dict[str, int] = {}
+    hosts: Dict[str, int] = {}
+    truncated = False
+    for ts, lt, frame in iter_frames(path):
+        total += 1
+        bytes_seen += len(frame)
+        if first is None:
+            first = ts
+        last = ts
+        if sample is not None and total > sample:
+            truncated = True
+            continue
+        p = decode(total, ts, lt, frame)
+        protos[p.proto or "non-ip"] = protos.get(p.proto or "non-ip", 0) + 1
+        if p.src:
+            hosts[p.src] = hosts.get(p.src, 0) + 1
+        for port in (p.sport, p.dport):
+            if port:
+                ports[port] = ports.get(port, 0) + 1
+    return {"packets": total, "bytes": bytes_seen, "first": first, "last": last,
+            "ports": ports, "protocols": protos, "hosts": hosts,
+            "sampled": truncated}
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +370,7 @@ class TcpStream:
     syn_ts: Optional[float] = None
 
 
-def assemble_tcp(packets: List[Packet]) -> Dict[Tuple, TcpStream]:
+def assemble_tcp(packets: Iterable[Packet]) -> Dict[Tuple, TcpStream]:
     """Group TCP packets into streams and order payload bytes by sequence."""
     chunks: Dict[Tuple, Dict[Tuple[str, int], List[Tuple[int, bytes]]]] = {}
     streams: Dict[Tuple, TcpStream] = {}
@@ -318,14 +408,14 @@ def assemble_tcp(packets: List[Packet]) -> Dict[Tuple, TcpStream]:
     return streams
 
 
-def tcp_messages(packets: List[Packet], ports: Tuple[int, ...]) -> Iterator[Tuple[Packet, bytes]]:
+def tcp_messages(packets: Iterable[Packet], ports: Tuple[int, ...]) -> Iterator[Tuple[Packet, bytes]]:
     """Yield (packet, payload) for TCP packets touching any of `ports`."""
     for p in packets:
         if p.proto == "tcp" and p.payload and (p.sport in ports or p.dport in ports):
             yield p, p.payload
 
 
-def udp_messages(packets: List[Packet], ports: Tuple[int, ...]) -> Iterator[Tuple[Packet, bytes]]:
+def udp_messages(packets: Iterable[Packet], ports: Tuple[int, ...]) -> Iterator[Tuple[Packet, bytes]]:
     for p in packets:
         if p.proto == "udp" and p.payload and (p.sport in ports or p.dport in ports):
             yield p, p.payload

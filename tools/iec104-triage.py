@@ -14,6 +14,7 @@ import argparse
 from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import iec104, pcapio
 from icsctf.util import section, table, ts
 
@@ -28,9 +29,10 @@ def main() -> None:
     ap.add_argument("--sbo", action="store_true", help="select-before-operate audit")
     ap.add_argument("--timeline", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, ports=[args.port])
     msgs = iec104.extract(pkts, args.port)
     if not msgs:
         print("no IEC-104 APDUs found")

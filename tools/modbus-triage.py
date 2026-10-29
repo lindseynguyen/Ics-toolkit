@@ -16,6 +16,7 @@ import struct
 from collections import Counter
 
 import _bootstrap  # noqa: F401
+import _common
 from icsctf import modbus, pcapio
 from icsctf.util import printable, section, table, ts
 
@@ -35,9 +36,10 @@ def main() -> None:
                     help="decode register payloads as ASCII")
     ap.add_argument("--timeline", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    _common.add_capture_args(ap)
     args = ap.parse_args()
 
-    pkts = pcapio.read_many(args.pcap)
+    pkts = _common.load_capture(args, args.pcap, ports=[args.port])
     msgs = modbus.extract(pkts, args.port)
     if args.unit is not None:
         msgs = [m for m in msgs if m.unit == args.unit]
