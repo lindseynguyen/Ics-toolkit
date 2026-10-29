@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICS Toolkit</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>ICS/OT artefact analysis</h1>
+  </div>
+  <nav>
+    <button id="mode-guided" class="tab active" type="button">Guided</button>
+    <button id="mode-expert" class="tab" type="button">All tools</button>
+    <button id="mode-help" class="tab" type="button">How to use</button>
+  </nav>
+  <div class="meta"><code id="ws-path">workspace</code></div>
+</header>
+
+<main>
+  <aside class="panel files">
+    <h2>1 &middot; Artefacts</h2>
+    <div id="drop" class="drop">
+      <strong>Drop a file here</strong>
+      <span>capture (.pcap/.pcapng), firmware or ROM image, binary, log</span>
+      <label class="btn ghost">Choose a file<input id="file-input" type="file" multiple hidden></label>
+      <div class="hint">Everything stays on this machine. Nothing is uploaded anywhere.</div>
+    </div>
+    <details class="localpath">
+      <summary>File already on this machine?</summary>
+      <p class="hint">Useful on an analysis box where the evidence is already on disk.</p>
+      <div class="row">
+        <input id="path-input" type="text" placeholder="/home/analyst/case/capture.pcap">
+        <button id="path-add" class="btn" type="button">Add</button>
+      </div>
+    </details>
+    <ul id="file-list" class="file-list"></ul>
+    <div id="group-steps"></div>
+  </aside>
+
+  <section class="panel work">
+    <!-- guided mode -->
+    <div id="view-guided">
+      <div id="artefact" class="empty">
+        <h2>Start by adding an artefact</h2>
+        <p>The interface reads the file, works out what it is, and proposes the
+           analysis steps in the order an incident responder would run them.
+           Each step explains why it matters and shows the exact command it
+           runs, so you can repeat it in a terminal later.</p>
+        <p class="hint">No prior OT experience needed. If you are not sure what
+           a word means, open <em>How to use</em> &rarr; glossary.</p>
+      </div>
+      <div id="steps"></div>
+    </div>
+
+    <!-- expert mode -->
+    <div id="view-expert" hidden>
+      <h2>Run any tool</h2>
+      <p class="hint">Every analysis script, with its options. The command line
+         is shown before it runs.</p>
+      <div class="form">
+        <label>Tool
+          <select id="tool-select"></select>
+        </label>
+        <div id="tool-blurb" class="blurb"></div>
+        <label>View
+          <select id="view-select"></select>
+        </label>
+        <label>Files
+          <select id="expert-files" multiple size="5"></select>
+          <span class="hint">Ctrl/Cmd-click for several files (merging needs more than one).</span>
+        </label>
+        <div id="flag-fields" class="flags"></div>
+        <button id="expert-run" class="btn primary" type="button">Run</button>
+      </div>
+    </div>
+
+    <!-- help -->
+    <div id="view-help" hidden>
+      <h2>How to use this</h2>
+      <ol class="steps-doc">
+        <li><b>Add the artefact.</b> Drop the file you were given on the left
+            panel. A packet capture, a firmware or cartridge image, an old
+            executable, a log - the interface identifies it by content, not by
+            its name.</li>
+        <li><b>Read the identification card.</b> It says in plain words what the
+            file is, how much traffic it holds, which industrial protocols are
+            inside, and warns you about things that will bite you later (IP
+            fragmentation, a tampered checksum, data appended past the end of a
+            binary).</li>
+        <li><b>Work down the suggested steps.</b> They are ordered: orientation
+            first, then the protocol-specific report, then the narrow views that
+            answer "what was changed" and "did the device accept it". The
+            highlighted button is the recommended next click.</li>
+        <li><b>Read "What this means" under each result.</b> The tables are
+            precise but assume protocol knowledge; that block translates them
+            and tells you what to look at next.</li>
+        <li><b>Keep the command lines.</b> Every result shows the exact command
+            that produced it. Copy them into your notes - they are your audit
+            trail, and running them yourself is how you stop needing the GUI.</li>
+      </ol>
+
+      <h3>What the analysis is actually looking for</h3>
+      <p>Industrial protocols were designed for reliability on a trusted wire,
+         not for authentication. Almost every finding in this toolkit comes down
+         to four questions:</p>
+      <ul class="plain">
+        <li><b>Who spoke?</b> Control traffic is repetitive and goes to fixed
+            peers. A host that contacts many devices, or asks questions without
+            ever answering any, does not belong.</li>
+        <li><b>Did it read or did it write?</b> Reads are monitoring.
+            Writes - a coil forced, a setpoint changed, a code block
+            downloaded - change the physical process.</li>
+        <li><b>Did the device accept it?</b> Every protocol here answers
+            differently for success and refusal. Refusals are evidence too: they
+            show what the intruder tried and could not do.</li>
+        <li><b>In what order?</b> Attackers silence reporting first, then act.
+            A timeline usually tells the story better than any single packet.</li>
+      </ul>
+
+      <h3>Glossary</h3>
+      <div id="glossary" class="glossary"></div>
+
+      <h3>Further reading</h3>
+      <p class="hint">The <code>docs/</code> directory of this repository
+         explains each protocol in depth, maps the observations to MITRE ATT&amp;CK
+         for ICS, and lists the controls each finding translates into.</p>
+    </div>
+
+    <div id="results"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

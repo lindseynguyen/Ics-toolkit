@@ -26,22 +26,56 @@ they run on an air-gapped analysis box with a stock Python.
 
 ## Requirements
 
-Python 3.9+. No required third-party packages: the pcap/pcapng reader and all
-protocol decoders are implemented in the standard library.
+Python 3.9+. No required third-party packages: the pcap/pcapng reader, every
+protocol decoder and the web interface are implemented in the standard
+library. It runs on an air-gapped analysis box with a stock Python.
 
 Optional: `capstone` for 16-bit disassembly in `dos-bin-inspect.py`.
 
 ```bash
-git clone https://github.com/<you>/ics-ctf-toolkit
-cd ics-ctf-toolkit
-python3 tests/make_fixtures.py fixtures/     # synthetic captures to try it on
+git clone https://github.com/lindseynguyen/Ics-toolkit
+cd Ics-toolkit
+python3 tests/make_fixtures.py fixtures/     # synthetic artefacts to practise on
+python3 gui/serve.py                         # graphical interface, or:
 python3 tools/pcap-overview.py fixtures/bacnet_bms.pcap
+```
+
+## Graphical interface
+
+```bash
+python3 gui/serve.py
+```
+
+Opens a local page on 127.0.0.1. Drop an artefact on it and the interface
+identifies it by content, proposes the analysis steps **in the order a
+responder would run them**, runs the real CLI tools, and explains each result
+in plain language. No install, no internet, nothing leaves the machine.
+
+![Guided mode](docs/images/gui-guided.png)
+
+Every step says *why* it matters before you run it, and every result shows the
+exact command that produced it - so the interface teaches the command line
+instead of hiding it.
+
+![A result](docs/images/gui-result.png)
+
+Three tabs: **Guided** (identification and the ordered plan), **All tools**
+(every script with every option), **How to use** (method and glossary).
+Full detail in [`docs/gui-guide.md`](docs/gui-guide.md); a forty-minute
+hands-on walkthrough for a complete beginner, using the synthetic fixtures, is
+in [`docs/getting-started.md`](docs/getting-started.md).
+
+The terminal equivalent of guided mode:
+
+```bash
+python3 tools/triage-plan.py evidence/*
 ```
 
 ## Tools
 
 | Tool | Purpose |
 |---|---|
+| `tools/triage-plan.py` | identify any set of artefacts and print the recommended order of analysis, with the commands ready to paste |
 | `tools/pcap-overview.py` | first pass on any capture: hosts, conversations, protocol identification, scan heuristics, fragmentation warning |
 | `tools/bacnet-triage.py` | BACnet/IP: device inventory, service usage, DeviceCommunicationControl / ReinitializeDevice password attempts with accepted-vs-failed counts, writeProperty targets and priorities |
 | `tools/s7-triage.py` | S7comm / S7comm-plus: endpoints and roles, SZL diagnostic reads, block upload/download, CPU STOP and why it was refused, IEEE-754 tag writes |
@@ -87,11 +121,17 @@ for key, res in results.items():
 | `icsctf.carve` | magic scan, decompression, entropy profiling, XOR recovery |
 | `icsctf.gbcart` | cartridge header, bank profiling, blob location |
 | `icsctf.dosbin` | MZ/COM layout, interrupt scan, float constants |
+| `icsctf.detect` | content-based artefact identification and step planning |
+| `icsctf.explain` | plain-language interpretation of a report, and the glossary |
 
 ## Documentation
 
 `docs/` is the point of the repository as much as the code is:
 
+- [`getting-started.md`](docs/getting-started.md) - a hands-on first analysis
+  for someone new to OT, start to finish, on the synthetic fixtures
+- [`gui-guide.md`](docs/gui-guide.md) - the graphical interface: every screen,
+  SSH use, what it will and will not do, troubleshooting
 - [`00-challenge-map.md`](docs/00-challenge-map.md) - which technology each
   OT challenge family exercises, and where to start
 - [`bacnet-ip.md`](docs/bacnet-ip.md) - BVLC/NPDU/APDU, the object and

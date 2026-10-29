@@ -15,6 +15,8 @@ run() {
   fi
 }
 
+run "$T/triage-plan.py"       "$FX/bacnet_bms.pcap" "$FX/rig.gb" "$FX/SETPT16.COM"
+run "$T/triage-plan.py"       "$FX/modbus_plc.pcap" --commands
 run "$T/pcap-overview.py"     "$FX/bacnet_bms.pcap" "$FX/modbus_plc.pcap"
 run "$T/bacnet-triage.py"     "$FX/bacnet_bms.pcap"
 run "$T/bacnet-triage.py"     "$FX/bacnet_bms.pcap" --dcc
@@ -45,6 +47,12 @@ run "$T/dos-bin-inspect.py"   "$FX/SETPT16.COM"
 run "$T/dos-bin-inspect.py"   "$FX/SETPT16.COM" --ints
 run "$T/blob-carve.py"        "$FX/rig.gb" --entropy
 run "$T/blob-carve.py"        "$FX/rig.gb" --xor
+
+echo "--- gui API smoke test"
+if ! python3 "$ROOT/tests/gui_smoke.py" "$FX" > /dev/null; then
+  echo "FAILED: gui smoke test"
+  fail=$((fail + 1))
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then
