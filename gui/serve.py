@@ -610,11 +610,11 @@ def main() -> None:
     WS = Workspace(args.workspace)
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     url = f"http://{args.host}:{args.port}/"
-    print(f"ics-ctf-toolkit GUI")
+    print("ics-toolkit GUI")
     print(f"  interface : {url}")
     print(f"  workspace : {WS.path}")
-    print(f"  artefacts you drop on the page are stored there; nothing leaves "
-          f"this machine.")
+    print("  artefacts you drop on the page are stored there; nothing leaves "
+          "this machine.")
     print("  press Ctrl+C to stop")
     if not args.no_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()

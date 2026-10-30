@@ -13,7 +13,6 @@ from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import pcapio
 from icsctf.util import pct, section, table, ts
 
 ICS_PORTS = {

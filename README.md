@@ -216,6 +216,16 @@ TDS captures plus a Game Boy ROM with an embedded zlib archive and a `.COM`
 HMI binary, all with known field values. `run_all.sh` runs every tool against
 them.
 
+## Training course
+
+A two-day course built on this toolkit, in Vietnamese, lives in its own
+repository: **[ot-ics-training](https://github.com/lindseynguyen/ot-ics-training)**.
+Eight labs on simulated captures, firmware and logs, a per-student exercise
+generator with generated answer keys, solutions and a teaching guide.
+
+It keeps its own exercise generator and only calls the tools here, so nothing
+is duplicated between the two repositories.
+
 ## Scope and intent
 
 Defensive analysis: reading artefacts, understanding protocol behaviour,

@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # ---------------------------------------------------------------- pcap writer
 class PcapWriter:
     def __init__(self, path: str, linktype: int = 1):
+        self.count = 0          # frame number of the packet written last
         self.fh = open(path, "wb")
         self.fh.write(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 262144, linktype))
         self.t = 1700000000.0
@@ -27,6 +28,7 @@ class PcapWriter:
 
     def _write(self, frame: bytes, dt: float = 0.01) -> None:
         self.t += dt
+        self.count += 1
         sec = int(self.t)
         usec = int(round((self.t - sec) * 1e6))
         self.fh.write(struct.pack("<IIII", sec, usec, len(frame), len(frame)))
@@ -108,13 +110,15 @@ def make_bacnet(path: str) -> None:
         w.udp(attacker, z, 47808, 47808, bvlc(req))
         w.udp(z, attacker, 47808, 47808, bvlc(bytes([0x20, 40 + i, 0x11])))
         # unlock a door, kill the lights, disable an occupancy sensor
-        for obj, prop, val in ((objid(4, 10 + i), 85, b"\x91\x01"),
-                               (objid(4, 20 + i), 85, b"\x91\x00"),
-                               (objid(3, 30 + i), 81, b"\x91\x01")):
-            wp = bytes([0x00, 0x05, 50 + i, 0x0F]) + ctx(0, obj) + ctx(1, bytes([prop])) \
+        for j, (obj, prop, val) in enumerate((
+                (objid(4, 10 + i), 85, b"\x91\x01"),
+                (objid(4, 20 + i), 85, b"\x91\x00"),
+                (objid(3, 30 + i), 81, b"\x91\x01"))):
+            iid = 50 + i * 3 + j          # invoke id riêng cho từng yêu cầu
+            wp = bytes([0x00, 0x05, iid, 0x0F]) + ctx(0, obj) + ctx(1, bytes([prop])) \
                 + b"\x3e" + val + b"\x3f" + ctx(4, bytes([8]))
             w.udp(attacker, z, 47808, 47808, bvlc(wp))
-            w.udp(z, attacker, 47808, 47808, bvlc(bytes([0x20, 50 + i, 0x0F])))
+            w.udp(z, attacker, 47808, 47808, bvlc(bytes([0x20, iid, 0x0F])))
 
     # cover tracks: reinitializeDevice warmstart on the building controller
     pw = "Rivermill24"

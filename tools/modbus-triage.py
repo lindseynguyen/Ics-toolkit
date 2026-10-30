@@ -17,7 +17,7 @@ from collections import Counter
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import modbus, pcapio
+from icsctf import modbus
 from icsctf.util import printable, section, table, ts
 
 

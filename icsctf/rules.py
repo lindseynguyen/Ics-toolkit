@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import datetime as _dt
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Set
 
 from . import bacnet, dnp3, iec104, modbus, pcapio, s7comm
 

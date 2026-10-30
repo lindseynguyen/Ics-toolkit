@@ -19,7 +19,7 @@ from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import pcapio, s7comm
+from icsctf import s7comm
 from icsctf.util import section, table, ts
 
 

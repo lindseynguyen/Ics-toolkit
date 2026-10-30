@@ -12,7 +12,6 @@ import struct
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-from .util import printable
 
 INT21_AH = {
     0x01: "read char w/ echo", 0x02: "write char", 0x08: "read char no echo",

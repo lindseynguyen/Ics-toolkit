@@ -165,10 +165,10 @@ def interpret(tool: str, args: List[str], out: str) -> List[str]:
                              "under the sender's control; everything after it "
                              "in the timeline is the consequence.")
             if total:
-                notes.append(f"If a challenge asks for a count of attempts "
-                             f"against the first target, use the row for that "
-                             f"target: total attempts there includes both the "
-                             f"failures and the success.")
+                notes.append("When you need a count of attempts against "
+                             "one target, read that target's row: total "
+                             "attempts includes both the failures and the "
+                             "success.")
         if "candidate rogue devices" in low:
             notes.append("A host that issues BACnet requests but never answers "
                          "one, and never announces itself with an i-Am, is not "

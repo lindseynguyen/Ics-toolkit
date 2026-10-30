@@ -62,7 +62,9 @@ def _ev(pkt_ts, src, kind, summary, actor="", target="", frame=None,
 def from_capture(path: str, **filters) -> List[Event]:
     """Significant protocol events from one capture."""
     out: List[Event] = []
-    ports = set(filters.pop("ports", []) or [])
+    # every decoder below is tried in turn, so no port pre-filter applies
+    # here; narrow a large capture with since/until/limit instead
+    filters.pop("ports", None)
     packets = pcapio.read_many([path], keep_raw=False, **filters)
     if not packets:
         return out
@@ -232,6 +234,10 @@ LOG_RULES = [
      "ssh-key", 3, "an SSH authorized_keys file was touched"),
     (re.compile(r"(?:systemctl|service)\s+(stop|disable|mask)\s+(\S+)"),
      "service-stopped", 3, "a service was stopped or disabled: {2}"),
+    # systemd reports its own shutdowns in a different shape, and a stopped
+    # collector is how the host-side record goes quiet
+    (re.compile(r"systemd\[\d+\]:\s+(?:Stopped|Stopping|Deactivated)\s+(.+?)\.?$"),
+     "service-stopped", 3, "a service was stopped: {1}"),
     (re.compile(r"\b(wget|curl)\b.*?(https?://\S+)"),
      "download", 2, "a file was downloaded with {1}: {2}"),
     (re.compile(r"\b(nmap|masscan|hydra|medusa|responder|mimikatz|plcscan|modbus-cli)\b"),

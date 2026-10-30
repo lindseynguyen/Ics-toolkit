@@ -18,9 +18,9 @@ import re
 import struct
 import zlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
-from .carve import MAGICS, entropy, find_magics
+from .carve import entropy, find_magics
 
 # ---------------------------------------------------------------------------
 # identification and hashing

@@ -11,7 +11,7 @@ import base64
 import re
 import struct
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from . import pcapio
 

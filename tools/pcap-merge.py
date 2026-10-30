@@ -15,7 +15,6 @@ import struct
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import pcapio
 from icsctf.util import ts
 
 

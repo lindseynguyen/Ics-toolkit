@@ -8,7 +8,7 @@ parses the header, maps banks, and points at the interesting ones.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from .carve import entropy, find_magics, high_entropy_regions
 from .util import printable
@@ -85,7 +85,6 @@ class CartInfo:
 def inspect(path: str, string_min: int = 5) -> CartInfo:
     with open(path, "rb") as fh:
         rom = fh.read()
-    h = rom[HEADER_OFF:HEADER_OFF + 0x50]
     title_raw = rom[0x134:0x144]
     cgb = rom[0x143] if len(rom) > 0x143 else 0
     if cgb in (0x80, 0xC0):

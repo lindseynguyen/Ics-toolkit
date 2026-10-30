@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional
 
 DNP3_PORT = 20000
 START = b"\x05\x64"

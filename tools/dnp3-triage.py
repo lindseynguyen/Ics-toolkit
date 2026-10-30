@@ -13,7 +13,7 @@ from collections import Counter
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import dnp3, pcapio
+from icsctf import dnp3
 from icsctf.util import section, table, ts
 
 CONTROL_FUNCS = {"select", "operate", "direct-operate", "direct-operate-no-ack",

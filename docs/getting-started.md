@@ -128,9 +128,10 @@ Click **Changes written to devices**.
 python3 tools/bacnet-triage.py fixtures/bacnet_bms.pcap --writes
 ```
 
-Three writes, one per zone controller, all to `out-of-service`.
+Nine writes: three per zone controller. In each zone a door relay is driven,
+a lighting output is switched off, and a sensor is written to `out-of-service`.
 
-This is the part worth understanding properly. `out-of-service` disconnects a
+The third one is the part worth understanding properly. `out-of-service` disconnects a
 BACnet object from the physical world. The object keeps reporting a value, and
 the operator's screen keeps displaying it - but the value is now whatever was
 written, not what the sensor sees. It is how you blind a monitoring system

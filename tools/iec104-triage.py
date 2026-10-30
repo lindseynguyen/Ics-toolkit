@@ -15,7 +15,7 @@ from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import iec104, pcapio
+from icsctf import iec104
 from icsctf.util import section, table, ts
 
 

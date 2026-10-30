@@ -18,7 +18,7 @@ from collections import Counter, defaultdict
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import bacnet, pcapio
+from icsctf import bacnet
 from icsctf.util import section, table, ts
 
 

@@ -8,9 +8,8 @@ content-based - extensions are only a tie-breaker - so a capture named
 from __future__ import annotations
 
 import os
-import struct
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from . import pcapio
 

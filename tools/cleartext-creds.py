@@ -15,7 +15,7 @@ import argparse
 
 import _bootstrap  # noqa: F401
 import _common
-from icsctf import creds, pcapio
+from icsctf import creds
 from icsctf.util import section, table, ts
 
 
