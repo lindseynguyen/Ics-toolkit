@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+fixtures/
+out/
+*.pcap
+*.pcapng
+*.gb
+*.gbc
+*.sav
+*.COM
+*.exe
+.venv/
+.idea/
+.vscode/
+workspace/
