@@ -226,6 +226,13 @@ generator with generated answer keys, solutions and a teaching guide.
 It keeps its own exercise generator and only calls the tools here, so nothing
 is duplicated between the two repositories.
 
+## Related resources
+
+For people using this toolkit to learn OT security and working toward the ISA/IEC 62443 certificates:
+
+- **[OT/ICS Security Quick Audit Checklist 2026](https://techsavant013.gumroad.com/l/ot-ics-quick-audit-checklist?utm_source=github&utm_medium=readme&utm_campaign=ics-toolkit)** (free, pay what you want): 35 evidence-based checks mapped to IEC 62443.
+- **[ISA/IEC 62443 Fundamentals Specialist practice exams](https://techsavant013.gumroad.com/l/iec62443-fundamentals-practice-exams?utm_source=github&utm_medium=readme&utm_campaign=ics-toolkit)** (244 questions) and the **[IC33 Risk Assessment Practice Kit](https://techsavant013.gumroad.com/l/ic33-risk-assessment-practice-kit?utm_source=github&utm_medium=readme&utm_campaign=ics-toolkit)** (254 questions): independent practice material with every answer explained.
+
 ## Scope and intent
 
 Defensive analysis: reading artefacts, understanding protocol behaviour,
